@@ -51,8 +51,8 @@ pub struct TerminalReader {
     /// Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object.
     ///
     /// This can be useful for storing additional information about the object in a structured format.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// Serial number of the reader.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -128,9 +128,15 @@ pub struct TerminalReaderReaderResourceProcessSetupIntentAction {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub generated_card: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub process_config: Option<TerminalReaderReaderResourceProcessSetupConfig>,
+
     /// Most recent SetupIntent processed by the reader.
     pub setup_intent: Expandable<SetupIntent>,
 }
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct TerminalReaderReaderResourceProcessSetupConfig {}
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct TerminalReaderReaderResourceRefundPaymentAction {
@@ -145,8 +151,8 @@ pub struct TerminalReaderReaderResourceRefundPaymentAction {
     /// Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object.
     ///
     /// This can be useful for storing additional information about the object in a structured format.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// Payment intent that is being refunded.
     #[serde(skip_serializing_if = "Option::is_none")]

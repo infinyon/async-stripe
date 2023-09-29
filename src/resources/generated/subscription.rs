@@ -266,13 +266,13 @@ impl Object for Subscription {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct CancellationDetails {
-    /// Additional comments about why the user canceled the subscription, if the subscription was cancelled explicitly by the user.
+    /// Additional comments about why the user canceled the subscription, if the subscription was canceled explicitly by the user.
     pub comment: Option<String>,
 
-    /// The customer submitted reason for why they cancelled, if the subscription was cancelled explicitly by the user.
+    /// The customer submitted reason for why they canceled, if the subscription was canceled explicitly by the user.
     pub feedback: Option<CancellationDetailsFeedback>,
 
-    /// Why this subscription was cancelled.
+    /// Why this subscription was canceled.
     pub reason: Option<CancellationDetailsReason>,
 }
 
@@ -1040,8 +1040,8 @@ pub struct CreateSubscriptionItems {
     /// This can be useful for storing additional information about the object in a structured format.
     /// Individual keys can be unset by posting an empty value to them.
     /// All keys can be unset by posting an empty value to `metadata`.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// Plan ID for this item, as a string.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1136,11 +1136,11 @@ pub struct UpdateSubscriptionAutomaticTax {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct UpdateSubscriptionCancellationDetails {
-    /// Additional comments about why the user canceled the subscription, if the subscription was cancelled explicitly by the user.
+    /// Additional comments about why the user canceled the subscription, if the subscription was canceled explicitly by the user.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
 
-    /// The customer submitted reason for why they cancelled, if the subscription was cancelled explicitly by the user.
+    /// The customer submitted reason for why they canceled, if the subscription was canceled explicitly by the user.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub feedback: Option<UpdateSubscriptionCancellationDetailsFeedback>,
 }
@@ -1172,8 +1172,8 @@ pub struct UpdateSubscriptionItems {
     /// This can be useful for storing additional information about the object in a structured format.
     /// Individual keys can be unset by posting an empty value to them.
     /// All keys can be unset by posting an empty value to `metadata`.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// Plan ID for this item, as a string.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1622,6 +1622,10 @@ pub struct CreateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFin
     /// Valid permissions include: `balances`, `ownership`, `payment_method`, and `transactions`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub permissions: Option<Vec<CreateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPermissions>>,
+
+    /// List of data features that you would like to retrieve upon account creation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prefetch: Option<Vec<CreateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch>>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -1676,6 +1680,10 @@ pub struct UpdateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFin
     /// Valid permissions include: `balances`, `ownership`, `payment_method`, and `transactions`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub permissions: Option<Vec<UpdateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPermissions>>,
+
+    /// List of data features that you would like to retrieve upon account creation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prefetch: Option<Vec<UpdateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch>>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -2079,6 +2087,41 @@ impl std::fmt::Display for CreateSubscriptionPaymentSettingsPaymentMethodOptions
     }
 }
 impl std::default::Default for CreateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPermissions {
+    fn default() -> Self {
+        Self::Balances
+    }
+}
+
+/// An enum representing the possible values of an `CreateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnections`'s `prefetch` field.
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum CreateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch
+{
+    Balances,
+}
+
+impl
+    CreateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch
+{
+    pub fn as_str(self) -> &'static str {
+        match self {
+            CreateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch::Balances => "balances",
+        }
+    }
+}
+
+impl AsRef<str> for CreateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::fmt::Display for CreateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.as_str().fmt(f)
+    }
+}
+impl std::default::Default for CreateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch {
     fn default() -> Self {
         Self::Balances
     }
@@ -3297,6 +3340,41 @@ impl std::fmt::Display for UpdateSubscriptionPaymentSettingsPaymentMethodOptions
     }
 }
 impl std::default::Default for UpdateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPermissions {
+    fn default() -> Self {
+        Self::Balances
+    }
+}
+
+/// An enum representing the possible values of an `UpdateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnections`'s `prefetch` field.
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum UpdateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch
+{
+    Balances,
+}
+
+impl
+    UpdateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch
+{
+    pub fn as_str(self) -> &'static str {
+        match self {
+            UpdateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch::Balances => "balances",
+        }
+    }
+}
+
+impl AsRef<str> for UpdateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::fmt::Display for UpdateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.as_str().fmt(f)
+    }
+}
+impl std::default::Default for UpdateSubscriptionPaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch {
     fn default() -> Self {
         Self::Balances
     }

@@ -8,7 +8,8 @@ use crate::client::{Client, Response};
 use crate::ids::PaymentLinkId;
 use crate::params::{Expand, Expandable, List, Metadata, Object, Paginable};
 use crate::resources::{
-    Account, CheckoutSessionItem, Currency, InvoiceSettingRenderingOptions, ShippingRate, TaxId,
+    Account, Application, CheckoutSessionItem, Currency, InvoiceSettingRenderingOptions,
+    ShippingRate, TaxId,
 };
 
 /// The resource representing a Stripe "PaymentLink".
@@ -28,6 +29,9 @@ pub struct PaymentLink {
 
     /// Whether user redeemable promotion codes are enabled.
     pub allow_promotion_codes: bool,
+
+    /// The ID of the Connect application that created the Payment Link.
+    pub application: Option<Expandable<Application>>,
 
     /// The amount of the application fee (if any) that will be requested to be applied to the payment and transferred to the application owner's Stripe account.
     pub application_fee_amount: Option<i64>,
@@ -278,11 +282,14 @@ pub struct PaymentLinksResourceCustomText {
 
     /// Custom text that should be displayed alongside the payment confirmation button.
     pub submit: Option<PaymentLinksResourceCustomTextPosition>,
+
+    /// Custom text that should be displayed in place of the default terms of service agreement text.
+    pub terms_of_service_acceptance: Option<PaymentLinksResourceCustomTextPosition>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct PaymentLinksResourceCustomTextPosition {
-    /// Text may be up to 1000 characters in length.
+    /// Text may be up to 1200 characters in length.
     pub message: String,
 }
 
@@ -316,7 +323,7 @@ pub struct PaymentLinksResourceInvoiceSettings {
     /// Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object.
     ///
     /// This can be useful for storing additional information about the object in a structured format.
-    pub metadata: Metadata,
+    pub metadata: Option<Metadata>,
 
     /// Options for invoice PDF rendering.
     pub rendering_options: Option<InvoiceSettingRenderingOptions>,
@@ -678,7 +685,7 @@ pub struct UpdatePaymentLink<'a> {
 
     /// The list of payment method types that customers can use.
     ///
-    /// Pass an empty string to enable automatic payment methods that use your [payment method settings](https://dashboard.stripe.com/settings/payment_methods).
+    /// Pass an empty string to enable dynamic payment methods that use your [payment method settings](https://dashboard.stripe.com/settings/payment_methods).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub payment_method_types: Option<Vec<UpdatePaymentLinkPaymentMethodTypes>>,
 
@@ -789,6 +796,10 @@ pub struct CreatePaymentLinkCustomText {
     /// Custom text that should be displayed alongside the payment confirmation button.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub submit: Option<CreatePaymentLinkCustomTextSubmit>,
+
+    /// Custom text that should be displayed in place of the default terms of service agreement text.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub terms_of_service_acceptance: Option<CreatePaymentLinkCustomTextTermsOfServiceAcceptance>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -957,6 +968,10 @@ pub struct UpdatePaymentLinkCustomText {
     /// Custom text that should be displayed alongside the payment confirmation button.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub submit: Option<UpdatePaymentLinkCustomTextSubmit>,
+
+    /// Custom text that should be displayed in place of the default terms of service agreement text.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub terms_of_service_acceptance: Option<UpdatePaymentLinkCustomTextTermsOfServiceAcceptance>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -1051,13 +1066,19 @@ pub struct CreatePaymentLinkCustomFieldsText {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct CreatePaymentLinkCustomTextShippingAddress {
-    /// Text may be up to 1000 characters in length.
+    /// Text may be up to 1200 characters in length.
     pub message: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct CreatePaymentLinkCustomTextSubmit {
-    /// Text may be up to 1000 characters in length.
+    /// Text may be up to 1200 characters in length.
+    pub message: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct CreatePaymentLinkCustomTextTermsOfServiceAcceptance {
+    /// Text may be up to 1200 characters in length.
     pub message: String,
 }
 
@@ -1086,8 +1107,8 @@ pub struct CreatePaymentLinkInvoiceCreationInvoiceData {
     /// This can be useful for storing additional information about the object in a structured format.
     /// Individual keys can be unset by posting an empty value to them.
     /// All keys can be unset by posting an empty value to `metadata`.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// Default options for invoice PDF rendering for this customer.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1173,13 +1194,19 @@ pub struct UpdatePaymentLinkCustomFieldsText {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct UpdatePaymentLinkCustomTextShippingAddress {
-    /// Text may be up to 1000 characters in length.
+    /// Text may be up to 1200 characters in length.
     pub message: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct UpdatePaymentLinkCustomTextSubmit {
-    /// Text may be up to 1000 characters in length.
+    /// Text may be up to 1200 characters in length.
+    pub message: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct UpdatePaymentLinkCustomTextTermsOfServiceAcceptance {
+    /// Text may be up to 1200 characters in length.
     pub message: String,
 }
 
@@ -1208,8 +1235,8 @@ pub struct UpdatePaymentLinkInvoiceCreationInvoiceData {
     /// This can be useful for storing additional information about the object in a structured format.
     /// Individual keys can be unset by posting an empty value to them.
     /// All keys can be unset by posting an empty value to `metadata`.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// Default options for invoice PDF rendering for this customer.
     #[serde(skip_serializing_if = "Option::is_none")]

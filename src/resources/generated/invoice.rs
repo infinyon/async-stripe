@@ -97,13 +97,10 @@ pub struct Invoice {
 
     /// Indicates the reason why the invoice was created.
     ///
-    /// `subscription_cycle` indicates an invoice created by a subscription advancing into a new period.
-    /// `subscription_create` indicates an invoice created due to creating a subscription.
-    /// `subscription_update` indicates an invoice created due to updating a subscription.
-    /// `subscription` is set for all old invoices to indicate either a change to a subscription or a period advancement.
-    /// `manual` is set for all invoices unrelated to a subscription (for example: created via the invoice editor).
-    /// The `upcoming` value is reserved for simulated invoices per the upcoming invoice endpoint.
-    /// `subscription_threshold` indicates an invoice created due to a billing threshold being reached.
+    /// * `manual`: Unrelated to a subscription, for example, created via the invoice editor.
+    /// * `subscription`: No longer in use.
+    ///
+    /// Applies to subscriptions from before May 2018 where no distinction was made between updates, cycles, and thresholds. * `subscription_create`: A new subscription was created. * `subscription_cycle`: A subscription advanced into a new period. * `subscription_threshold`: A subscription reached a billing threshold. * `subscription_update`: A subscription was updated. * `upcoming`: Reserved for simulated invoices, per the upcoming invoice endpoint.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub billing_reason: Option<InvoiceBillingReason>,
 
@@ -294,8 +291,8 @@ pub struct Invoice {
     /// Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object.
     ///
     /// This can be useful for storing additional information about the object in a structured format.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// The time at which payment will next be attempted.
     ///
@@ -673,8 +670,7 @@ pub struct SubscriptionDetailsData {
     /// Set of [key-value pairs](https://stripe.com/docs/api/metadata) that will reflect the metadata of the subscription at the time of invoice creation.
     ///
     /// *Note: This attribute is populated only for invoices created on or after June 29, 2023.*.
-    #[serde(default)]
-    pub metadata: Metadata,
+    pub metadata: Option<Metadata>,
 }
 
 /// The parameters for `Invoice::create`.
@@ -1125,8 +1121,8 @@ pub struct CreateInvoiceShippingCostShippingRateData {
     /// This can be useful for storing additional information about the object in a structured format.
     /// Individual keys can be unset by posting an empty value to them.
     /// All keys can be unset by posting an empty value to `metadata`.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// Specifies whether the rate is considered inclusive of taxes or exclusive of taxes.
     ///
@@ -1322,6 +1318,10 @@ pub struct CreateInvoicePaymentSettingsPaymentMethodOptionsUsBankAccountFinancia
     /// Valid permissions include: `balances`, `ownership`, `payment_method`, and `transactions`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub permissions: Option<Vec<CreateInvoicePaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPermissions>>,
+
+    /// List of data features that you would like to retrieve upon account creation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prefetch: Option<Vec<CreateInvoicePaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch>>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -1753,6 +1753,44 @@ impl std::fmt::Display
 }
 impl std::default::Default
     for CreateInvoicePaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPermissions
+{
+    fn default() -> Self {
+        Self::Balances
+    }
+}
+
+/// An enum representing the possible values of an `CreateInvoicePaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnections`'s `prefetch` field.
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum CreateInvoicePaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch {
+    Balances,
+}
+
+impl CreateInvoicePaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            CreateInvoicePaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch::Balances => "balances",
+        }
+    }
+}
+
+impl AsRef<str>
+    for CreateInvoicePaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch
+{
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::fmt::Display
+    for CreateInvoicePaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.as_str().fmt(f)
+    }
+}
+impl std::default::Default
+    for CreateInvoicePaymentSettingsPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch
 {
     fn default() -> Self {
         Self::Balances

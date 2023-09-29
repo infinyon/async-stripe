@@ -5,13 +5,17 @@
 use serde::{Deserialize, Serialize};
 
 use crate::client::{Client, Response};
-use crate::ids::{CustomerId, MandateId, PaymentIntentId, PaymentMethodId};
+use crate::ids::{
+    CustomerId, MandateId, PaymentIntentId, PaymentMethodConfigurationId, PaymentMethodId,
+};
 use crate::params::{Expand, Expandable, List, Metadata, Object, Paginable, RangeQuery, Timestamp};
 use crate::resources::{
     Account, ApiErrors, Application, Charge, Currency, Customer, Invoice,
     LinkedAccountOptionsUsBankAccount, PaymentIntentNextActionCashappHandleRedirectOrDisplayQrCode,
-    PaymentIntentOffSession, PaymentMethod, PaymentMethodDetailsCardInstallmentsPlan,
-    PaymentMethodOptionsCustomerBalanceEuBankAccount, PaymentSource, Review, Shipping,
+    PaymentIntentOffSession, PaymentMethod,
+    PaymentMethodConfigBizPaymentMethodConfigurationDetails,
+    PaymentMethodDetailsCardInstallmentsPlan, PaymentMethodOptionsCustomerBalanceEuBankAccount,
+    PaymentSource, Review, Shipping,
 };
 
 /// The resource representing a Stripe "PaymentIntent".
@@ -125,6 +129,11 @@ pub struct PaymentIntent {
     /// ID of the payment method used in this PaymentIntent.
     pub payment_method: Option<Expandable<PaymentMethod>>,
 
+    /// Information about the payment method configuration used for this PaymentIntent.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payment_method_configuration_details:
+        Option<PaymentMethodConfigBizPaymentMethodConfigurationDetails>,
+
     /// Payment-method-specific configuration for this PaymentIntent.
     pub payment_method_options: Option<PaymentIntentPaymentMethodOptions>,
 
@@ -182,7 +191,7 @@ pub struct PaymentIntent {
 
     /// A string that identifies the resulting payment as part of a group.
     ///
-    /// See the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/connected-accounts) for details.
+    /// See the PaymentIntents [use case for connected accounts](https://stripe.com/docs/connect/separate-charges-and-transfers) for details.
     pub transfer_group: Option<String>,
 }
 
@@ -205,9 +214,9 @@ impl PaymentIntent {
 
     /// Retrieves the details of a PaymentIntent that has previously been created.
     ///
-    /// Client-side retrieval using a publishable key is allowed when the `client_secret` is provided in the query string.
-    /// When retrieved with a publishable key, only a subset of properties will be returned.
-    /// Please refer to the [payment intent](https://stripe.com/docs/api#payment_intent_object) object reference for more details.
+    /// You can retrieve a PaymentIntent client-side using a publishable key when the `client_secret` is in the query string.
+    /// If you retrieve a PaymentIntent with a publishable key, it only returns a subset of properties.
+    /// Refer to the [payment intent](https://stripe.com/docs/api#payment_intent_object) object reference for more details.
     pub fn retrieve(
         client: &Client,
         id: &PaymentIntentId,
@@ -218,11 +227,11 @@ impl PaymentIntent {
 
     /// Updates properties on a PaymentIntent object without confirming.
     ///
-    /// Depending on which properties you update, you may need to confirm the
+    /// Depending on which properties you update, you might need to confirm the
     /// PaymentIntent again.
     ///
-    /// For example, updating the `payment_method` will always require you to confirm the PaymentIntent again.
-    /// If you prefer to update and confirm at the same time, we recommend updating properties via the [confirm API](https://stripe.com/docs/api/payment_intents/confirm) instead.
+    /// For example, updating the `payment_method` always requires you to confirm the PaymentIntent again.
+    /// If you prefer to update and confirm at the same time, we recommend updating properties through the [confirm API](https://stripe.com/docs/api/payment_intents/confirm) instead.
     pub fn update(
         client: &Client,
         id: &PaymentIntentId,
@@ -1555,6 +1564,10 @@ pub struct CreatePaymentIntent<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub payment_method: Option<PaymentMethodId>,
 
+    /// The ID of the payment method configuration to use with this PaymentIntent.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payment_method_configuration: Option<PaymentMethodConfigurationId>,
+
     /// If provided, this hash will be used to create a PaymentMethod.
     ///
     /// The new PaymentMethod will appear in the [payment_method](https://stripe.com/docs/api/payment_intents/object#payment_intent_object-payment_method) property on the PaymentIntent.
@@ -1624,7 +1637,7 @@ pub struct CreatePaymentIntent<'a> {
 
     /// A string that identifies the resulting payment as part of a group.
     ///
-    /// See the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/connected-accounts) for details.
+    /// See the PaymentIntents [use case for connected accounts](https://stripe.com/docs/connect/separate-charges-and-transfers) for details.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transfer_group: Option<&'a str>,
 
@@ -1653,6 +1666,7 @@ impl<'a> CreatePaymentIntent<'a> {
             off_session: Default::default(),
             on_behalf_of: Default::default(),
             payment_method: Default::default(),
+            payment_method_configuration: Default::default(),
             payment_method_data: Default::default(),
             payment_method_options: Default::default(),
             payment_method_types: Default::default(),
@@ -1784,6 +1798,10 @@ pub struct UpdatePaymentIntent<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub payment_method: Option<PaymentMethodId>,
 
+    /// The ID of the payment method configuration to use with this PaymentIntent.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payment_method_configuration: Option<PaymentMethodConfigurationId>,
+
     /// If provided, this hash will be used to create a PaymentMethod.
     ///
     /// The new PaymentMethod will appear in the [payment_method](https://stripe.com/docs/api/payment_intents/object#payment_intent_object-payment_method) property on the PaymentIntent.
@@ -1794,10 +1812,9 @@ pub struct UpdatePaymentIntent<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub payment_method_options: Option<UpdatePaymentIntentPaymentMethodOptions>,
 
-    /// The list of payment method types (e.g.
+    /// The list of payment method types (for example, card) that this PaymentIntent can use.
     ///
-    /// card) that this PaymentIntent is allowed to use.
-    /// Use automatic_payment_methods to manage payment methods from the [Stripe Dashboard](https://dashboard.stripe.com/settings/payment_methods).
+    /// Use `automatic_payment_methods` to manage payment methods from the [Stripe Dashboard](https://dashboard.stripe.com/settings/payment_methods).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub payment_method_types: Option<Vec<String>>,
 
@@ -1832,16 +1849,16 @@ pub struct UpdatePaymentIntent<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub statement_descriptor_suffix: Option<&'a str>,
 
-    /// The parameters used to automatically create a Transfer when the payment succeeds.
+    /// Use this parameter to automatically create a Transfer when the payment succeeds.
     ///
-    /// For more information, see the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/connected-accounts).
+    /// Learn more about the [use case for connected accounts](https://stripe.com/docs/payments/connected-accounts).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transfer_data: Option<UpdatePaymentIntentTransferData>,
 
     /// A string that identifies the resulting payment as part of a group.
     ///
-    /// `transfer_group` may only be provided if it has not been set.
-    /// See the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/connected-accounts) for details.
+    /// You can only provide `transfer_group` if it hasn't been set.
+    /// Learn more about the [use case for connected accounts](https://stripe.com/docs/payments/connected-accounts).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transfer_group: Option<&'a str>,
 }
@@ -1858,6 +1875,7 @@ impl<'a> UpdatePaymentIntent<'a> {
             expand: Default::default(),
             metadata: Default::default(),
             payment_method: Default::default(),
+            payment_method_configuration: Default::default(),
             payment_method_data: Default::default(),
             payment_method_options: Default::default(),
             payment_method_types: Default::default(),
@@ -1983,8 +2001,8 @@ pub struct CreatePaymentIntentPaymentMethodData {
     /// This can be useful for storing additional information about the object in a structured format.
     /// Individual keys can be unset by posting an empty value to them.
     /// All keys can be unset by posting an empty value to `metadata`.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// If this is an `oxxo` PaymentMethod, this hash contains details about the OXXO payment method.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -2320,8 +2338,8 @@ pub struct UpdatePaymentIntentPaymentMethodData {
     /// This can be useful for storing additional information about the object in a structured format.
     /// Individual keys can be unset by posting an empty value to them.
     /// All keys can be unset by posting an empty value to `metadata`.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// If this is an `oxxo` PaymentMethod, this hash contains details about the OXXO payment method.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -4436,6 +4454,12 @@ pub struct CreatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnecti
         Vec<CreatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPermissions>,
     >,
 
+    /// List of data features that you would like to retrieve upon account creation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prefetch: Option<
+        Vec<CreatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch>,
+    >,
+
     /// For webview integrations only.
     ///
     /// Upon completing OAuth login in the native browser, the user will be redirected to this URL to return to your app.
@@ -4614,6 +4638,12 @@ pub struct UpdatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnecti
     #[serde(skip_serializing_if = "Option::is_none")]
     pub permissions: Option<
         Vec<UpdatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPermissions>,
+    >,
+
+    /// List of data features that you would like to retrieve upon account creation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prefetch: Option<
+        Vec<UpdatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch>,
     >,
 
     /// For webview integrations only.
@@ -4976,6 +5006,7 @@ pub enum CreatePaymentIntentPaymentMethodDataIdealBank {
     Ing,
     Knab,
     Moneyou,
+    N26,
     Rabobank,
     Regiobank,
     Revolut,
@@ -4995,6 +5026,7 @@ impl CreatePaymentIntentPaymentMethodDataIdealBank {
             CreatePaymentIntentPaymentMethodDataIdealBank::Ing => "ing",
             CreatePaymentIntentPaymentMethodDataIdealBank::Knab => "knab",
             CreatePaymentIntentPaymentMethodDataIdealBank::Moneyou => "moneyou",
+            CreatePaymentIntentPaymentMethodDataIdealBank::N26 => "n26",
             CreatePaymentIntentPaymentMethodDataIdealBank::Rabobank => "rabobank",
             CreatePaymentIntentPaymentMethodDataIdealBank::Regiobank => "regiobank",
             CreatePaymentIntentPaymentMethodDataIdealBank::Revolut => "revolut",
@@ -7384,6 +7416,44 @@ impl std::fmt::Display
 }
 impl std::default::Default
     for CreatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPermissions
+{
+    fn default() -> Self {
+        Self::Balances
+    }
+}
+
+/// An enum representing the possible values of an `CreatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnections`'s `prefetch` field.
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum CreatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch {
+    Balances,
+}
+
+impl CreatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            CreatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch::Balances => "balances",
+        }
+    }
+}
+
+impl AsRef<str>
+    for CreatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch
+{
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::fmt::Display
+    for CreatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.as_str().fmt(f)
+    }
+}
+impl std::default::Default
+    for CreatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch
 {
     fn default() -> Self {
         Self::Balances
@@ -10215,6 +10285,7 @@ pub enum UpdatePaymentIntentPaymentMethodDataIdealBank {
     Ing,
     Knab,
     Moneyou,
+    N26,
     Rabobank,
     Regiobank,
     Revolut,
@@ -10234,6 +10305,7 @@ impl UpdatePaymentIntentPaymentMethodDataIdealBank {
             UpdatePaymentIntentPaymentMethodDataIdealBank::Ing => "ing",
             UpdatePaymentIntentPaymentMethodDataIdealBank::Knab => "knab",
             UpdatePaymentIntentPaymentMethodDataIdealBank::Moneyou => "moneyou",
+            UpdatePaymentIntentPaymentMethodDataIdealBank::N26 => "n26",
             UpdatePaymentIntentPaymentMethodDataIdealBank::Rabobank => "rabobank",
             UpdatePaymentIntentPaymentMethodDataIdealBank::Regiobank => "regiobank",
             UpdatePaymentIntentPaymentMethodDataIdealBank::Revolut => "revolut",
@@ -12623,6 +12695,44 @@ impl std::fmt::Display
 }
 impl std::default::Default
     for UpdatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPermissions
+{
+    fn default() -> Self {
+        Self::Balances
+    }
+}
+
+/// An enum representing the possible values of an `UpdatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnections`'s `prefetch` field.
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum UpdatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch {
+    Balances,
+}
+
+impl UpdatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            UpdatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch::Balances => "balances",
+        }
+    }
+}
+
+impl AsRef<str>
+    for UpdatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch
+{
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::fmt::Display
+    for UpdatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.as_str().fmt(f)
+    }
+}
+impl std::default::Default
+    for UpdatePaymentIntentPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch
 {
     fn default() -> Self {
         Self::Balances

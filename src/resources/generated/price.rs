@@ -71,8 +71,8 @@ pub struct Price {
     /// Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object.
     ///
     /// This can be useful for storing additional information about the object in a structured format.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// A brief description of the price, hidden from customers.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -510,10 +510,6 @@ pub struct UpdatePrice<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nickname: Option<&'a str>,
 
-    /// The recurring components of a price such as `interval` and `usage_type`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub recurring: Option<UpdatePriceRecurring>,
-
     /// Only required if a [default tax behavior](https://stripe.com/docs/tax/products-prices-tax-categories-tax-behavior#setting-a-default-tax-behavior-(recommended)) was not provided in the Stripe Tax settings.
     ///
     /// Specifies whether the price is considered inclusive of taxes or exclusive of taxes.
@@ -536,7 +532,6 @@ impl<'a> UpdatePrice<'a> {
             lookup_key: Default::default(),
             metadata: Default::default(),
             nickname: Default::default(),
-            recurring: Default::default(),
             tax_behavior: Default::default(),
             transfer_lookup_key: Default::default(),
         }
@@ -615,8 +610,8 @@ pub struct CreatePriceProductData {
     /// This can be useful for storing additional information about the object in a structured format.
     /// Individual keys can be unset by posting an empty value to them.
     /// All keys can be unset by posting an empty value to `metadata`.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// The product's name, meant to be displayable to the customer.
     pub name: String,
@@ -758,13 +753,6 @@ pub struct UpdatePriceCurrencyOptions {
     /// Only one of `unit_amount` and `unit_amount_decimal` can be set.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unit_amount_decimal: Option<String>,
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
-pub struct UpdatePriceRecurring {
-    /// Default number of trial days when subscribing a customer to this plan using [`trial_from_plan=true`](https://stripe.com/docs/api#create_subscription-trial_from_plan).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub trial_period_days: Option<u32>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]

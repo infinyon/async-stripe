@@ -27,9 +27,9 @@ pub mod core {
     pub mod invoice_setting_rendering_options;
     pub mod linked_account_options_us_bank_account;
     pub mod mandate;
-    pub mod mandate_options_off_session_details_blik;
     pub mod payment_intent;
     pub mod payment_intent_next_action_cashapp_handle_redirect_or_display_qr_code;
+    pub mod payment_method_config_biz_payment_method_configuration_details;
     pub mod payment_method_details_card_checks;
     pub mod payment_method_details_card_wallet_apple_pay;
     pub mod payment_method_details_card_wallet_google_pay;

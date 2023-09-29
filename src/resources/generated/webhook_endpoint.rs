@@ -52,8 +52,8 @@ pub struct WebhookEndpoint {
     /// Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object.
     ///
     /// This can be useful for storing additional information about the object in a structured format.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// The endpoint's secret, used to generate [webhook signatures](https://stripe.com/docs/webhooks/signatures).
     ///
@@ -449,8 +449,6 @@ pub enum EventFilter {
     InvoiceitemCreated,
     #[serde(rename = "invoiceitem.deleted")]
     InvoiceitemDeleted,
-    #[serde(rename = "invoiceitem.updated")]
-    InvoiceitemUpdated,
     #[serde(rename = "issuing_authorization.created")]
     IssuingAuthorizationCreated,
     #[serde(rename = "issuing_authorization.request")]
@@ -850,7 +848,6 @@ impl EventFilter {
             EventFilter::InvoiceVoided => "invoice.voided",
             EventFilter::InvoiceitemCreated => "invoiceitem.created",
             EventFilter::InvoiceitemDeleted => "invoiceitem.deleted",
-            EventFilter::InvoiceitemUpdated => "invoiceitem.updated",
             EventFilter::IssuingAuthorizationCreated => "issuing_authorization.created",
             EventFilter::IssuingAuthorizationRequest => "issuing_authorization.request",
             EventFilter::IssuingAuthorizationUpdated => "issuing_authorization.updated",

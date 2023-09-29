@@ -5,13 +5,17 @@
 use serde::{Deserialize, Serialize};
 
 use crate::client::{Client, Response};
-use crate::ids::{CheckoutSessionId, CustomerId, PaymentIntentId, PaymentLinkId, SubscriptionId};
+use crate::ids::{
+    CheckoutSessionId, CustomerId, PaymentIntentId, PaymentLinkId, PaymentMethodConfigurationId,
+    SubscriptionId,
+};
 use crate::params::{
     CurrencyMap, Expand, Expandable, List, Metadata, Object, Paginable, Timestamp,
 };
 use crate::resources::{
     Address, CheckoutSessionItem, Currency, Customer, Discount, Invoice,
     InvoiceSettingRenderingOptions, LinkedAccountOptionsUsBankAccount, PaymentIntent, PaymentLink,
+    PaymentMethodConfigBizPaymentMethodConfigurationDetails,
     PaymentMethodOptionsCustomerBalanceEuBankAccount, SetupIntent, Shipping, ShippingRate,
     Subscription, TaxId, TaxRate,
 };
@@ -76,7 +80,7 @@ pub struct CheckoutSession {
     pub custom_text: PaymentPagesCheckoutSessionCustomText,
 
     /// The ID of the customer for this Session.
-    /// For Checkout Sessions in `payment` or `subscription` mode, Checkout
+    /// For Checkout Sessions in `subscription` mode or Checkout Sessions with `customer_creation` set as `always` in `payment` mode, Checkout
     /// will create a new customer object based on information provided
     /// during the payment flow unless an existing customer was provided when
     /// the Session was created.
@@ -122,7 +126,7 @@ pub struct CheckoutSession {
     /// Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object.
     ///
     /// This can be useful for storing additional information about the object in a structured format.
-    pub metadata: Metadata,
+    pub metadata: Option<Metadata>,
 
     /// The mode of the Checkout Session.
     pub mode: CheckoutSessionMode,
@@ -135,6 +139,11 @@ pub struct CheckoutSession {
 
     /// Configure whether a Checkout Session should collect a payment method.
     pub payment_method_collection: Option<CheckoutSessionPaymentMethodCollection>,
+
+    /// Information about the payment method configuration used for this Checkout session if using dynamic payment methods.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payment_method_configuration_details:
+        Option<PaymentMethodConfigBizPaymentMethodConfigurationDetails>,
 
     /// Payment-method-specific configuration for the PaymentIntent or SetupIntent of this CheckoutSession.
     pub payment_method_options: Option<CheckoutSessionPaymentMethodOptions>,
@@ -865,11 +874,14 @@ pub struct PaymentPagesCheckoutSessionCustomText {
 
     /// Custom text that should be displayed alongside the payment confirmation button.
     pub submit: Option<PaymentPagesCheckoutSessionCustomTextPosition>,
+
+    /// Custom text that should be displayed in place of the default terms of service agreement text.
+    pub terms_of_service_acceptance: Option<PaymentPagesCheckoutSessionCustomTextPosition>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct PaymentPagesCheckoutSessionCustomTextPosition {
-    /// Text may be up to 1000 characters in length.
+    /// Text may be up to 1200 characters in length.
     pub message: String,
 }
 
@@ -926,7 +938,7 @@ pub struct PaymentPagesCheckoutSessionInvoiceSettings {
     /// Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object.
     ///
     /// This can be useful for storing additional information about the object in a structured format.
-    pub metadata: Metadata,
+    pub metadata: Option<Metadata>,
 
     /// Options for invoice PDF rendering.
     pub rendering_options: Option<InvoiceSettingRenderingOptions>,
@@ -1104,7 +1116,7 @@ pub struct CreateCheckoutSession<'a> {
     ///
     /// In `payment` mode, the customer’s most recent card payment method will be used to prefill the email, name, card details, and billing address on the Checkout page.
     /// In `subscription` mode, the customer’s [default payment method](https://stripe.com/docs/api/customers/update#update_customer-invoice_settings-default_payment_method) will be used if it’s a card, and otherwise the most recent card will be used.
-    /// A valid billing address, billing name and billing email are required on the payment method for Checkout to prefill the customer's card details.  If the Customer already has a valid [email](https://stripe.com/docs/api/customers/object#customer_object-email) set, the email will be prefilled and not editable in Checkout. If the Customer does not have a valid `email`, Checkout will set the email entered during the session on the Customer.  If blank for Checkout Sessions in `payment` or `subscription` mode, Checkout will create a new Customer object based on information provided during the payment flow.  You can set [`payment_intent_data.setup_future_usage`](https://stripe.com/docs/api/checkout/sessions/create#create_checkout_session-payment_intent_data-setup_future_usage) to have Checkout automatically attach the payment method to the Customer you pass in for future reuse.
+    /// A valid billing address, billing name and billing email are required on the payment method for Checkout to prefill the customer's card details.  If the Customer already has a valid [email](https://stripe.com/docs/api/customers/object#customer_object-email) set, the email will be prefilled and not editable in Checkout. If the Customer does not have a valid `email`, Checkout will set the email entered during the session on the Customer.  If blank for Checkout Sessions in `subscription` mode or with `customer_creation` set as `always` in `payment` mode, Checkout will create a new Customer object based on information provided during the payment flow.  You can set [`payment_intent_data.setup_future_usage`](https://stripe.com/docs/api/checkout/sessions/create#create_checkout_session-payment_intent_data-setup_future_usage) to have Checkout automatically attach the payment method to the Customer you pass in for future reuse.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub customer: Option<CustomerId>,
 
@@ -1193,6 +1205,10 @@ pub struct CreateCheckoutSession<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub payment_method_collection: Option<CheckoutSessionPaymentMethodCollection>,
 
+    /// The ID of the payment method configuration to use with this Checkout session.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payment_method_configuration: Option<PaymentMethodConfigurationId>,
+
     /// Payment-method-specific configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub payment_method_options: Option<CreateCheckoutSessionPaymentMethodOptions>,
@@ -1229,14 +1245,10 @@ pub struct CreateCheckoutSession<'a> {
     pub shipping_address_collection: Option<CreateCheckoutSessionShippingAddressCollection>,
 
     /// The shipping rate options to apply to this Session.
+    ///
+    /// Up to a maximum of 5.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shipping_options: Option<Vec<CreateCheckoutSessionShippingOptions>>,
-
-    /// [Deprecated] The shipping rate to apply to this Session.
-    ///
-    /// Only up to one may be specified.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub shipping_rates: Option<Vec<String>>,
 
     /// Describes the type of transaction being performed by Checkout in order to customize
     /// relevant text on the page, such as the submit button.
@@ -1287,13 +1299,13 @@ impl<'a> CreateCheckoutSession<'a> {
             mode: Default::default(),
             payment_intent_data: Default::default(),
             payment_method_collection: Default::default(),
+            payment_method_configuration: Default::default(),
             payment_method_options: Default::default(),
             payment_method_types: Default::default(),
             phone_number_collection: Default::default(),
             setup_intent_data: Default::default(),
             shipping_address_collection: Default::default(),
             shipping_options: Default::default(),
-            shipping_rates: Default::default(),
             submit_type: Default::default(),
             subscription_data: Default::default(),
             success_url,
@@ -1441,6 +1453,11 @@ pub struct CreateCheckoutSessionCustomText {
     /// Custom text that should be displayed alongside the payment confirmation button.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub submit: Option<CreateCheckoutSessionCustomTextSubmit>,
+
+    /// Custom text that should be displayed in place of the default terms of service agreement text.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub terms_of_service_acceptance:
+        Option<CreateCheckoutSessionCustomTextTermsOfServiceAcceptance>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -1546,8 +1563,8 @@ pub struct CreateCheckoutSessionPaymentIntentData {
     /// This can be useful for storing additional information about the object in a structured format.
     /// Individual keys can be unset by posting an empty value to them.
     /// All keys can be unset by posting an empty value to `metadata`.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// The Stripe account ID for which these funds are intended.
     ///
@@ -1605,7 +1622,7 @@ pub struct CreateCheckoutSessionPaymentIntentData {
 
     /// A string that identifies the resulting payment as part of a group.
     ///
-    /// See the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/connected-accounts) for details.
+    /// See the PaymentIntents [use case for connected accounts](https://stripe.com/docs/connect/separate-charges-and-transfers) for details.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transfer_group: Option<String>,
 }
@@ -1744,8 +1761,8 @@ pub struct CreateCheckoutSessionSetupIntentData {
     /// This can be useful for storing additional information about the object in a structured format.
     /// Individual keys can be unset by posting an empty value to them.
     /// All keys can be unset by posting an empty value to `metadata`.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// The Stripe account for which the setup is intended.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1786,12 +1803,6 @@ pub struct CreateCheckoutSessionSubscriptionData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub billing_cycle_anchor: Option<Timestamp>,
 
-    /// The ID of the coupon to apply to this subscription.
-    ///
-    /// A coupon applied to a subscription will only affect invoices created for that particular subscription.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub coupon: Option<String>,
-
     /// The tax rates that will apply to any subscription item that does not have
     /// `tax_rates` set.
     ///
@@ -1810,8 +1821,8 @@ pub struct CreateCheckoutSessionSubscriptionData {
     /// This can be useful for storing additional information about the object in a structured format.
     /// Individual keys can be unset by posting an empty value to them.
     /// All keys can be unset by posting an empty value to `metadata`.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// The account on behalf of which to charge, for each of the subscription's invoices.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1833,13 +1844,6 @@ pub struct CreateCheckoutSessionSubscriptionData {
     /// Has to be at least 48 hours in the future.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub trial_end: Option<Timestamp>,
-
-    /// Indicates if a plan’s `trial_period_days` should be applied to the subscription.
-    ///
-    /// Setting `trial_end` on `subscription_data` is preferred.
-    /// Defaults to `false`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub trial_from_plan: Option<bool>,
 
     /// Integer representing the number of trial period days before the
     /// customer is charged for the first time.
@@ -1924,13 +1928,19 @@ pub struct CreateCheckoutSessionCustomFieldsText {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct CreateCheckoutSessionCustomTextShippingAddress {
-    /// Text may be up to 1000 characters in length.
+    /// Text may be up to 1200 characters in length.
     pub message: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct CreateCheckoutSessionCustomTextSubmit {
-    /// Text may be up to 1000 characters in length.
+    /// Text may be up to 1200 characters in length.
+    pub message: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct CreateCheckoutSessionCustomTextTermsOfServiceAcceptance {
+    /// Text may be up to 1200 characters in length.
     pub message: String,
 }
 
@@ -1959,8 +1969,8 @@ pub struct CreateCheckoutSessionInvoiceCreationInvoiceData {
     /// This can be useful for storing additional information about the object in a structured format.
     /// Individual keys can be unset by posting an empty value to them.
     /// All keys can be unset by posting an empty value to `metadata`.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// Default options for invoice PDF rendering for this customer.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -2519,8 +2529,8 @@ pub struct CreateCheckoutSessionShippingOptionsShippingRateData {
     /// This can be useful for storing additional information about the object in a structured format.
     /// Individual keys can be unset by posting an empty value to them.
     /// All keys can be unset by posting an empty value to `metadata`.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// Specifies whether the rate is considered inclusive of taxes or exclusive of taxes.
     ///
@@ -2616,8 +2626,8 @@ pub struct CreateCheckoutSessionLineItemsPriceDataProductData {
     /// This can be useful for storing additional information about the object in a structured format.
     /// Individual keys can be unset by posting an empty value to them.
     /// All keys can be unset by posting an empty value to `metadata`.
-    #[serde(default)]
-    pub metadata: Metadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Metadata>,
 
     /// The product's name, meant to be displayable to the customer.
     pub name: String,
@@ -2722,8 +2732,6 @@ pub struct CreateCheckoutSessionPaymentMethodOptionsCustomerBalanceBankTransfer 
     pub requested_address_types: Option<Vec<CreateCheckoutSessionPaymentMethodOptionsCustomerBalanceBankTransferRequestedAddressTypes>>,
 
     /// The list of bank transfer types that this PaymentIntent is allowed to use for funding.
-    ///
-    /// Permitted values include: `us_bank_account`, `eu_bank_account`, `id_bank_account`, `gb_bank_account`, `jp_bank_account`, `mx_bank_account`, `eu_bank_transfer`, `gb_bank_transfer`, `id_bank_transfer`, `jp_bank_transfer`, `mx_bank_transfer`, or `us_bank_transfer`.
     #[serde(rename = "type")]
     pub type_: CreateCheckoutSessionPaymentMethodOptionsCustomerBalanceBankTransferType,
 }
@@ -2737,6 +2745,12 @@ pub struct CreateCheckoutSessionPaymentMethodOptionsUsBankAccountFinancialConnec
     #[serde(skip_serializing_if = "Option::is_none")]
     pub permissions: Option<
         Vec<CreateCheckoutSessionPaymentMethodOptionsUsBankAccountFinancialConnectionsPermissions>,
+    >,
+
+    /// List of data features that you would like to retrieve upon account creation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prefetch: Option<
+        Vec<CreateCheckoutSessionPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch>,
     >,
 }
 
@@ -6072,6 +6086,44 @@ impl std::fmt::Display
 }
 impl std::default::Default
     for CreateCheckoutSessionPaymentMethodOptionsUsBankAccountFinancialConnectionsPermissions
+{
+    fn default() -> Self {
+        Self::Balances
+    }
+}
+
+/// An enum representing the possible values of an `CreateCheckoutSessionPaymentMethodOptionsUsBankAccountFinancialConnections`'s `prefetch` field.
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum CreateCheckoutSessionPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch {
+    Balances,
+}
+
+impl CreateCheckoutSessionPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            CreateCheckoutSessionPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch::Balances => "balances",
+        }
+    }
+}
+
+impl AsRef<str>
+    for CreateCheckoutSessionPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch
+{
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::fmt::Display
+    for CreateCheckoutSessionPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.as_str().fmt(f)
+    }
+}
+impl std::default::Default
+    for CreateCheckoutSessionPaymentMethodOptionsUsBankAccountFinancialConnectionsPrefetch
 {
     fn default() -> Self {
         Self::Balances
